@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Anu Suite Series Registry",
+  "description": "Single source of truth for an Anu Suite data construction project. Every output (Chopped CSV, Extenbook, Shiny app, validation report) derives from this file.",
+  "type": "object",
+  "required": ["registry_version", "project_name", "series"],
+  "properties": {
+    "registry_version": {
+      "type": "string",
+      "description": "Semver version of the registry schema",
+      "examples": ["2.0.0"]
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Human-readable project name"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last modification"
+    },
+    "sources": {
+      "type": "object",
+      "description": "Catalog of all data sources referenced by series. Keyed by SourceReference ID.",
+      "patternProperties": {
+        "^SRC-[A-Z0-9-]+$": {
+          "type": "object",
+          "required": ["name", "type", "citation"],
+          "properties": {
+            "name": {"type": "string"},
+            "type": {
+              "type": "string",
+              "enum": ["primary_source", "secondary_source", "api_endpoint", "methodology_reference"]
+            },
+            "citation": {"type": "string"},
+            "url": {"type": "string", "format": "uri"},
+            "access_date": {"type": "string", "format": "date"}
+          }
+        }
+      }
+    },
+    "series": {
+      "type": "object",
+      "description": "All series in the project. Keyed by series ID (S001, S002, ...).",
+      "patternProperties": {
+        "^S[0-9]{3}$": {
+          "type": "object",
+          "required": ["name", "chapter"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Human-readable series name"
+            },
+            "chapter": {
+              "type": "integer",
+              "description": "Chapter or module the series belongs to"
+            },
+            "figures": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Figure references where this series appears"
+            },
+            "viz_column": {
+              "type": "string",
+              "description": "Alias used by the visualization layer for this series"
+            },
+            "subseries": {
+              "type": "object",
+              "description": "Period-specific data sources composing the series.",
+              "patternProperties": {
+                "^S[0-9]{3}-[A-Z]+$": {
+                  "type": "object",
+                  "required": ["period", "source", "units"],
+                  "properties": {
+                    "period": {
+                      "type": "string",
+                      "description": "Year range covered by this subsource",
+                      "examples": ["1860-1932"]
+                    },
+                    "source": {
+                      "type": "string",
+                      "description": "Reference to a SourceReference ID or full citation"
+                    },
+                    "source_ref": {
+                      "type": "string",
+                      "description": "SourceReference ID from the sources block",
+                      "examples": ["SRC-BEA-LTEG"]
+                    },
+                    "units": {"type": "string"},
+                    "base_year": {"type": "integer"},
+                    "viz_column": {
+                      "type": "string",
+                      "description": "Column alias for visualization layer"
+                    },
+                    "is_extension": {
+                      "type": "boolean",
+                      "description": "True if this subsource is an API-based extension"
+                    }
+                  }
+                }
+              }
+            },
+            "extension": {
+              "type": "object",
+              "description": "Configuration for extending the series with API data",
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "enum": ["reindex_at_splice", "concatenate", "weighted_average", "manual"]
+                },
+                "splice_year": {"type": "integer"},
+                "api_source": {"type": "string"},
+                "api_series_id": {"type": "string"}
+              }
+            },
+            "construction_steps": {
+              "type": "array",
+              "description": "Ordered list of transformations applied during processing",
+              "items": {
+                "type": "object",
+                "required": ["step", "operation"],
+                "properties": {
+                  "step": {"type": "integer"},
+                  "operation": {
+                    "type": "string",
+                    "enum": ["load", "reindex", "splice", "aggregate", "deflate", "ratio", "filter", "manual_adjust"]
+                  },
+                  "description": {"type": "string"},
+                  "formula": {"type": "string"}
+                }
+              }
+            },
+            "reference_values": {
+              "type": "array",
+              "description": "Known reference values for validation",
+              "items": {
+                "type": "object",
+                "required": ["year", "value", "source"],
+                "properties": {
+                  "year": {"type": "integer"},
+                  "value": {"type": "number"},
+                  "tolerance": {"type": "number"},
+                  "source": {"type": "string"}
+                }
+              }
+            },
+            "research_file": {
+              "type": "string",
+              "description": "Path to S###_research.json file"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "registry_version": "2.0.0",
+  "project_name": "Sample Project: US Industrial Production Replication",
+  "last_updated": "2026-04-26T12:00:00Z",
+
+  "sources": {
+    "SRC-BEA-LTEG": {
+      "name": "BEA Long Term Economic Growth 1860-1970",
+      "type": "primary_source",
+      "citation": "Bureau of Economic Analysis. (1966). Long Term Economic Growth, 1860-1970. Table A-15.",
+      "access_date": "2026-03-15"
+    },
+    "SRC-FRED-INDPRO": {
+      "name": "Federal Reserve Industrial Production Index",
+      "type": "api_endpoint",
+      "citation": "FRED. Industrial Production: Total Index (INDPRO).",
+      "url": "https://fred.stlouisfed.org/series/INDPRO",
+      "access_date": "2026-04-01"
+    }
+  },
+
+  "series": {
+    "S001": {
+      "name": "US Industrial Production Index",
+      "chapter": 2,
+      "figures": ["Fig2.1"],
+      "viz_column": "IndProd",
+
+      "subseries": {
+        "S001-A": {
+          "period": "1860-1932",
+          "source": "BEA LTEG 1966, Table A-15, p.185",
+          "source_ref": "SRC-BEA-LTEG",
+          "units": "Index 1899=100",
+          "base_year": 1899,
+          "viz_column": "IndProd_Historical"
+        },
+        "S001-B": {
+          "period": "1933-2025",
+          "source": "FRED INDPRO",
+          "source_ref": "SRC-FRED-INDPRO",
+          "units": "Index 2017=100",
+          "base_year": 2017,
+          "viz_column": "IndProd_Modern"
+        },
+        "S001-EXT": {
+          "period": "2011-2025",
+          "source": "FRED INDPRO (extension)",
+          "source_ref": "SRC-FRED-INDPRO",
+          "units": "Index 2017=100",
+          "is_extension": true,
+          "viz_column": "IndProd_Extension"
+        }
+      },
+
+      "extension": {
+        "method": "reindex_at_splice",
+        "splice_year": 2011,
+        "api_source": "FRED",
+        "api_series_id": "INDPRO"
+      },
+
+      "construction_steps": [
+        {
+          "step": 1,
+          "operation": "load",
+          "description": "Load S001-A from BEA LTEG Table A-15"
+        },
+        {
+          "step": 2,
+          "operation": "load",
+          "description": "Load S001-B from FRED INDPRO via API"
+        },
+        {
+          "step": 3,
+          "operation": "reindex",
+          "description": "Reindex S001-A from 1899=100 to 2017=100",
+          "formula": "S001-A_reindexed[t] = S001-A[t] * (S001-B[1933] / S001-A[1933])"
+        },
+        {
+          "step": 4,
+          "operation": "splice",
+          "description": "Splice S001-A and S001-B at 1933"
+        }
+      ],
+
+      "reference_values": [
+        {"year": 1929, "value": 25.4, "tolerance": 0.5, "source": "Shaikh 2016, Fig 2.1"},
+        {"year": 1933, "value": 17.1, "tolerance": 0.5, "source": "Shaikh 2016, Fig 2.1"},
+        {"year": 2010, "value": 95.7, "tolerance": 1.0, "source": "FRED INDPRO 2017=100"}
+      ],
+
+      "research_file": "research/S001_research.json"
+    }
+  }
+}
