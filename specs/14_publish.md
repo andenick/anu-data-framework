@@ -1,7 +1,9 @@
 
-# Anu Publish Standard v1.0
+# Anu Publish Standard v2.0
 
-Transform an internal Anu Framework project into a clean, publishable artifact. Handles the full lifecycle from audit through export.
+Transform an internal Anu Data Framework project into a clean, publishable GitHub repository. Handles audit, scrubbing, documentation generation, and packaging.
+
+Learned from publishing [measuring-the-wealth-of-nations](https://github.com/andenick/measuring-the-wealth-of-nations) (59 series, 18-page report, 58 per-series docs).
 
 ## Core Principle
 

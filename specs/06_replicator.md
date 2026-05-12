@@ -1,7 +1,37 @@
 
-# Anu Replicator Standard v2.0
+# Anu Replicator Standard v3.1
 
-A **versioned, self-contained replication package** with a four-phase architecture (Loading, Processing, Validation, Manual Adjustment). No agent is needed to run the replicator — a researcher clones the package, sets API keys, runs `python replicate.py`, and gets complete, validated output with a full SHA-256 hash audit trail.
+A **versioned, self-contained replication package** with an eight-phase architecture. No agent is needed to run the replicator — a researcher clones the package, sets API keys, runs `python run.py`, and gets complete, validated output with a full SHA-256 hash audit trail.
+
+---
+
+## Mandatory Orchestrator
+
+Every replicator package MUST include a `run.py` at its root that:
+
+1. **Discovers** scripts by phase prefix (S##, L##, P##, V##, M##, A##, O##, E##)
+2. **Runs** them in dependency order within each phase
+3. **Reports** pass/fail/warn for each script
+4. **Supports** at minimum: `--validate-only`, `--from PHASE`, `--list`, `--test-all`
+5. **Exits 0** if all validators pass, **exits 1** if any validator fails
+
+The orchestrator is the entry point for reproducibility. Without it, a researcher cannot verify the package works.
+
+## Mandatory Validators (V## Phase)
+
+Every replicator package MUST include at least these 5 validators:
+
+| Validator | What It Checks | Why It's Required |
+|-----------|---------------|-------------------|
+| V01 | Reference values: book-published numbers match within tolerance | Core faithfulness check |
+| V02 | Range checks: no values outside physically possible bounds | Catches unit errors |
+| V04 | Completeness: no missing years in expected ranges | Catches silent data gaps |
+| V05 | Cross-series identities: algebraic relationships hold | Catches formula errors |
+| V08 | Hash integrity: data files unchanged since last validation | Catches accidental overwrites |
+
+Additional recommended validators: V03 (continuity), V06 (splice quality), V07 (extension overlap), V09+ (cross-study validation).
+
+A package with 0 validators is NOT a replicator package — it's a script collection.
 
 ---
 

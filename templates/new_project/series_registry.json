@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "project": "PROJECT_NAME",
+  "book": "AUTHOR (YEAR) Title",
+  "core_period": [1948, 1989],
+  "extension_period": [1990, 2025],
+  "series": {}
+}

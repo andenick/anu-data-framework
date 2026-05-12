@@ -151,13 +151,27 @@ These rules exist because their absence caused specific, documented failures in 
 
 ```
 anu-data-framework/
-  specs/           14 protocol specifications (Markdown)
+  specs/           15 protocol specifications (00_rules + 14 skills)
   schemas/         JSON schemas for the series registry
   examples/        Sample registry and data files
+  templates/       Project scaffold for new data construction projects
   docs/            Architecture and data flow documentation
   README.md        This file
   CLAUDE.md        Quick orientation for AI code reviewers
   LICENSE          MIT
+```
+
+## Start a New Project
+
+```bash
+cp -r templates/new_project my_replication
+cd my_replication
+# Edit series_registry.json with your series
+# Add L## scripts in code/loading/
+# Add P## scripts in code/processing/
+# Add V## validators in code/validation/
+python run.py --list    # See your scripts
+python run.py --test-all  # Run everything
 ```
 
 ---

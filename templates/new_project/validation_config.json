@@ -1,0 +1,10 @@
+{
+  "tolerances": {
+    "rate_series": {"relative": 0.001, "absolute": 0.01},
+    "dollar_series": {"relative": 0.01, "absolute": 1.0},
+    "share_series": {"relative": 0.05, "absolute": 0.02}
+  },
+  "series_overrides": {},
+  "benchmark_validation": {},
+  "exclude_from_range_checks": []
+}

@@ -1,7 +1,54 @@
 
-# Anu Ingestion Standard v4.0
+# Anu Ingestion Standard v4.1
 
-The comprehensive data intake standard for the Anu Framework. Covers the full path from raw sources to a structured, documented, agent-ready data project. Replaces the former "Anu Standard" with expanded scope covering Knowledge Base construction, data absorption, and series decomposition.
+The comprehensive data intake standard for the Anu Data Framework. Covers the full path from raw sources to a structured, documented, agent-ready data project.
+
+---
+
+## Mandatory Governance Artifacts
+
+Every project MUST maintain these files from the start of ingestion:
+
+### DECISION_LOG.md
+Record every non-trivial methodology choice using DEC-NNN format:
+```markdown
+## DEC-001: [Decision Title] (YYYY-MM-DD)
+**Decision**: What was decided
+**Rationale**: Why
+**Alternatives Considered**: What was rejected and why
+**Impact**: Which series are affected
+**Status**: ACCEPTED | RESOLVED | SUPERSEDED
+```
+This is not optional. Without a decision log, future sessions and reviewers cannot understand WHY the data was constructed the way it was.
+
+### ASSUMPTIONS.md
+Document assumptions in three categories:
+- **ASM-D** (Data): Assumptions about data availability, continuity, units
+- **ASM-M** (Methodological): Assumptions about formulas, splicing methods, classification
+- **ASM-R** (Reproducibility): Assumptions about API stability, data vintages
+
+### Minimum Registry Schema
+
+`series_registry.json` MUST include these fields for every series:
+```json
+{
+  "series_id": "REQUIRED — unique identifier (S###, T###, N###)",
+  "name": "REQUIRED — human-readable name",
+  "chapter": "REQUIRED — source chapter/section number",
+  "year_range": "REQUIRED — [start_year, end_year]",
+  "units": "REQUIRED — billions_usd, ratio, index, percent, etc.",
+  "content_type": "REQUIRED — time_series | cross_sectional | theoretical | derived",
+  "subseries": "REQUIRED — at least one subseries with source and period",
+  "construction": "REQUIRED — at least one construction step (op, inputs, output)",
+  "validation": {
+    "reference_values": "REQUIRED if book/paper publishes specific values",
+    "expected_range": "REQUIRED — [min, max] for sanity checking"
+  },
+  "loader": "REQUIRED — L## script ID",
+  "processor": "REQUIRED for Tier 1 — P## script ID"
+}
+```
+A registry with only API mapping (series_id → FRED code) is NOT a registry — it's a fetch list.
 
 ---
 
