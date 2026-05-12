@@ -1,127 +1,249 @@
-# Anu Pipeline — Multi-Agent Orchestrator
 
-## Purpose
+# Anu Pipeline Standard v3.0
 
-A 10-stage orchestrator that sequences the Anu Suite skills into a complete data construction workflow. Tracks pipeline state, manages agent handoffs, and enforces prerequisite ordering.
+The master orchestrator for Anu Framework data construction workflows. Sequences 14 skills through 8 sequential stages plus floating skills, tracks state via `PIPELINE_STATE.json`, and enforces prerequisites and data integrity gates between stages. All packages follow the AnuData Architecture format standard.
 
-## The 10 Stages
+---
 
-| Stage | Skill | Output |
-|-------|-------|--------|
-| 0 | Adequacy | `CH{N}_ADEQUACY_REPORT.json` |
-| 1 | Research | `S###_research.json` per series |
-| 2 | Ingestion | `series_registry.json`, decompositions, DPRs |
-| 3 | Extension | EPRs, extension methodology |
-| 4 | Replicator | L##/P##/V##/M## scripts |
-| 5 | Chopped + Extenbook | CSVs and Excel workbooks |
-| 5b | Visualization Export | Chapter CSVs, catalog, SUBSOURCE_METADATA |
-| 6 | Variant | Methodology variant tracking |
-| 7 | Ledger | Coverage tracking |
-| 8 | Review | 12-dimension audit |
-| 9 | Pipeline Validation | End-to-end checks |
-
-## Prerequisite Graph
+## Pipeline Stages
 
 ```
-Stage 0 (Adequacy) ─┬─ blocks all subsequent stages
-                    │
-Stage 1 (Research) ─┴─ required for Stage 2, 3, 5
-                    │
-Stage 2 (Ingestion) ── produces registry, required for all data stages
-                    │
-Stage 3 (Extension) ── required for series with extensions
-                    │
-Stage 4 (Replicator) ── produces all data, required for Stage 5+
-                    │
-Stages 5, 5b ───────── output generation, parallelizable
-                    │
-Stages 6, 7 ────────── tracking, can run anytime after Stage 4
-                    │
-Stage 8 (Review) ───── final audit, requires all prior stages
-                    │
-Stage 9 (Validation) ─ end-to-end pipeline integrity check
+Stage 1:  RESEARCH       -> Anu Research (mine KB for every series)
+Stage 2:  ADEQUACY       -> Anu Adequacy (post-research readiness gate) [GATE]
+Stage 3:  INGESTION      -> Anu Ingestion (registry, decompose, provenance)
+Stage 4:  EXTENSION      -> Anu Extension (define extension methodology)
+Stage 5:  REPLICATION    -> Anu Replicator (build L##/P##/V##/M## package in AnuData format)
+Stage 6:  OUTPUT         -> Anu Chopped + Anu Extenbook (output formats)
+Stage 7:  VISUALIZATION  -> Anu Visualize (interactive app + figure export)
+Stage 8:  PUBLICATION    -> Anu Publish (scrub, package, validate for release) [OPTIONAL]
+
+FLOATING (invoke at any stage):
+  Anu Review             -> Quality audit (12+ dimensions) — run early and often
+  Anu Variant            -> Methodology variant tracking — document alternatives as discovered
+
+INFRASTRUCTURE (cross-cutting):
+  Anu Ledger             -> Artifact inventory — regenerate after every stage advance
+  Anu Data               -> AnuData Architecture — the format standard all packages follow
 ```
 
-## Pipeline State
+### Stage 2 is a Gate
 
-The orchestrator maintains `PIPELINE_STATE.json`:
+Adequacy runs AFTER Research because research reveals what's available; adequacy then checks whether what's available is sufficient. Pipeline cannot proceed to Ingestion unless adequacy is ADEQUATE (>=80) or EXEMPLARY (>=95).
+
+### Data Integrity Gate (between every stage)
+
+Before advancing to any stage, verify:
+- No synthetic, placeholder, approximated, or frozen data in any output
+- No `np.random` or fabricated values
+- Every value traces to a published source or documented analytical method
+- All series with missing data are marked `"status": "data_unavailable"` (not filled)
+
+### Stage Dependencies
+
+| Stage | Prerequisites | Outputs |
+|-------|--------------|---------|
+| 1. Research | KB exists, scope identified | S###_research.json per series |
+| 2. Adequacy | Research complete | ADEQUACY_REPORT.json (gate) |
+| 3. Ingestion | Adequacy ADEQUATE+ | series_registry.json, DPRs, decompositions |
+| 4. Extension | Ingestion complete | Extension methodology, EPRs |
+| 5. Replication | Ingestion + Extension | L##/P##/V##/M## scripts, all data outputs, VALIDATION_REPORT.json |
+| 6. Output | Replication complete, V## pass | Chopped CSVs, Extenbook Excels |
+| 7. Visualization | Output complete | Interactive app, figure exports, SUBSOURCE_METADATA.json |
+| 8. Publication | Review score >= 85% | Scrubbed export, README, LICENSE, CITATION.cff |
+
+---
+
+## Pipeline State (PIPELINE_STATE.json)
+
+Tracks completion of each stage per chapter:
 
 ```json
 {
-  "project_name": "Capitalism Data",
-  "current_stage": 4,
-  "stages": {
-    "0_adequacy": {"status": "COMPLETE", "completion_date": "2026-03-15"},
-    "1_research": {"status": "COMPLETE", "completion_date": "2026-03-20"},
-    "2_ingestion": {"status": "COMPLETE", "completion_date": "2026-03-25"},
-    "3_extension": {"status": "COMPLETE", "completion_date": "2026-04-01"},
-    "4_replicator": {"status": "IN_PROGRESS"},
-    "5_chopped_extenbook": {"status": "PENDING"},
-    ...
-  },
-  "blocking_issues": []
+  "project": "[PROJECT]",
+  "last_updated": "2026-03-08T15:00:00Z",
+  "chapters": {
+    "7": {
+      "stage_0_adequacy": {
+        "status": "complete",
+        "completed_date": "2026-03-08",
+        "adequacy_score": 92,
+        "adequacy_rating": "ADEQUATE",
+        "artifact": "Technical/docs/chapters/CH7_ADEQUACY_REPORT.json"
+      },
+      "stage_1_research": {
+        "status": "complete",
+        "completed_date": "2026-03-08",
+        "series_completed": ["S034", "S035", "S036", "S037", "S038"],
+        "artifacts": ["Technical/research/S034_research.json", "..."]
+      },
+      "stage_2_ingestion": {
+        "status": "complete",
+        "completed_date": "2026-03-08",
+        "series_completed": ["S034", "S035", "S036", "S037", "S038"],
+        "artifacts": ["Technical/series_registry.json", "Technical/docs/series/S034_DECOMPOSITION.md", "..."]
+      },
+      "stage_3_extension": {
+        "status": "not_applicable",
+        "note": "NAICS revisions prevent direct extension"
+      },
+      "stage_4_replication": {
+        "status": "complete",
+        "completed_date": "2026-03-08",
+        "verification": {
+          "clean_slate_run": true,
+          "series_passed": 5,
+          "series_failed": 0,
+          "total_series": 5
+        }
+      },
+      "stage_5_output": {
+        "status": "complete",
+        "completed_date": "2026-03-08",
+        "verification": {
+          "chopped_csvs": "5/5 generated",
+          "extenbooks": "5/5 generated",
+          "figure_csvs": "8 figure CSVs",
+          "absorbed": "chapter_07_absorbed.csv"
+        }
+      },
+      "stage_5b_viz_export": {
+        "status": "pending",
+        "note": "Figure CSVs generated. Dash integration not yet done."
+      },
+      "stage_6_viz_audit": {"status": "not_started"},
+      "two_tier_structure": {
+        "tier_1_composites": {
+          "series": ["S034", "S035", "S036", "S037", "S038"],
+          "status": "complete"
+        },
+        "tier_2_input_tables": {
+          "series": ["S215", "S216", "S217"],
+          "status": "registered"
+        }
+      }
+    }
+  }
 }
 ```
 
-## Agent Handoff Pattern
+---
 
-Each stage produces deliverables consumed by the next stage. Agents check upstream deliverables before starting:
+## Chapter Implementation Workflow
 
-```python
-# Pseudocode for Stage 3 (Extension) agent
-prerequisites = ["S###_research.json (Stage 1)", "series_registry.json (Stage 2)"]
-for prereq in prerequisites:
-    if not exists(prereq):
-        raise PrerequisiteError(f"Missing: {prereq}")
+The practical order for implementing a full chapter pipeline, refined from 4 completed chapters:
 
-# Proceed with extension work
-```
+1. **KB Synthesis**: Read appendix/methodology sources. Create `Inputs/Robert/KB/ch##_topic.md` with equations, data sources, adjustments. Update `appendix_methodology_summary.json`.
+2. **Research**: Batch-create all `S###_research.json` for the chapter's Tier 1 series, mining the KB and appendix files.
+3. **Registry — Tier 2**: Register all raw input tables (Tier 2) in `series_registry.json` with `"tier": 2`, `source_file`, and column mappings.
+4. **Decompositions**: Create `S###_DECOMPOSITION.md` for each Tier 1 series with sub-components, construction steps, and Mermaid diagram.
+5. **Registry — Tier 1**: Register all Tier 1 composite series and figure entries in `series_registry.json`.
+6. **Loading Scripts**: Create L## scripts for the chapter (one per Tier 2 input table). Run and verify parsed CSVs.
+7. **Processing Scripts**: Create P## scripts for each Tier 1 series. Run and verify `_final.csv`, `_chopped.csv`, `_extenbook.xlsx` outputs.
+8. **Documentation**: Create DPRs for Tier 1 series, EPRs where extensions are possible, FPRs for all figures.
+9. **Absorption**: Run `absorb.py --chapter ##` to generate `chapter_##_absorbed.csv`.
+10. **Figure CSVs**: Generate per-figure CSVs by copying chopped CSVs to `data/final-data/figures/`.
+11. **Validation**: Regenerate the Ledger, verify health score, check for zero high-priority gaps.
+12. **State Updates**: Update `PIPELINE_STATE.json`, `PROGRESS_LOG.md`, `.claude/instructions.md`.
+
+Steps 1-5 can often be parallelized across multiple subagents. Steps 6-7 are sequential (loading must complete before processing).
+
+---
+
+## Skill-Stage Mapping
+
+The Anu Framework consists of 14 skills mapped to pipeline stages:
+
+| Stage | Skill | Creates | Feeds Into |
+|-------|-------|---------|-----------|
+| 1 | anu-research | S###_research.json | Adequacy, Ingestion, Extension, Extenbook |
+| 2 | anu-adequacy | ADEQUACY_REPORT.json (gate) | Ingestion |
+| 3 | anu-ingestion | series_registry.json, DPRs, decompositions | Extension, Replicator, all output formats |
+| 4 | anu-extension | EPRs, extension config in registry | Replicator |
+| 5 | anu-replicator | L##/P##/V##/M## scripts, all data | Output formats, Visualization |
+| 6 | anu-chopped + anu-extenbook | Validated CSVs, Excel workbooks | Visualization, Review |
+| 7 | anu-visualize | Interactive app, figure exports | Review, Publication |
+| 8 | anu-publish | Scrubbed export, README, LICENSE, CITATION.cff | External release |
+| Float | anu-review | Quality audit reports | Remediation at any stage |
+| Float | anu-variant | Variant documentation | Review |
+| Infra | anu-ledger | ANU_LEDGER.json | Review (regenerated after every stage) |
+| Infra | anu-data | AnuData Architecture format standard | All packages follow this |
+
+Every skill has an **Anu Framework Context** section in its SKILL.md describing its pipeline position, upstream/downstream dependencies, and key handoffs.
+
+## Agent Best Practices
+
+### Lead + Teammate Pattern
+
+- **Lead agent**: Manages pipeline state, assigns tasks, verifies prerequisites
+- **Teammate agents**: Execute individual stages or series-level work
+
+### Progressive Disclosure
+
+Agents should not attempt to understand the entire project at once. The pipeline provides progressive disclosure:
+1. Read `PIPELINE_STATE.json` to know current stage
+2. Read the relevant SKILL.md for the current stage
+3. Work on the specific series or task assigned
+4. Update pipeline state when complete
+
+### Verification at Every Stage
+
+Before advancing to the next stage, verify:
+- All required artifacts exist
+- All series in the chapter are processed
+- Quality checks pass (validation scripts, reference value checks)
+
+---
 
 ## Commands
 
-```bash
-# Start a new project at Stage 0
-anu-pipeline init project_name
+| Command | Description |
+|---------|-------------|
+| `/anu-pipeline status [chapter]` | Show pipeline state for a chapter |
+| `/anu-pipeline advance [chapter]` | Advance to the next stage (with prerequisite check) |
+| `/anu-pipeline run-stage [stage] [chapter]` | Execute a specific stage |
+| `/anu-pipeline init [chapter]` | Initialize pipeline state for a chapter |
+| `/anu-pipeline reset [stage] [chapter]` | Reset a stage to not_started |
 
-# Advance one stage
-anu-pipeline next
+---
 
-# Run a specific stage
-anu-pipeline run --stage 4
+## Integration with Anu Framework
 
-# Check current status
-anu-pipeline status
+The Pipeline skill references all other 13 skills and enforces their ordering. It is the entry point for agents working on a data construction project. All packages built through the pipeline conform to the AnuData Architecture format standard.
 
-# Validate dependencies before advancing
-anu-pipeline validate
-```
+---
 
-## Pipeline State Transitions
+## Version History
 
-```
-PENDING → IN_PROGRESS → COMPLETE
-                    \
-                     → BLOCKED → (resolve issue) → IN_PROGRESS
-                    \
-                     → FAILED → (debug) → IN_PROGRESS
-```
+- **v1.0** (March 2026) — Initial release with 7 stages
+- **v2.0** (April 2026) — Added Validation (V##) and Manual Adjustment (M##) stages. 10 stages total.
+- **v3.0** (May 2026) — Major rewrite for Anu Framework v8.0:
+  - Reordered: Research (Stage 1) → Adequacy (Stage 2) — research reveals what's available, then adequacy checks sufficiency
+  - Anu Review is now FLOATING — can run at any stage, not locked to Stage 6
+  - Added Stage 8: Publication (anu-publish) as optional final stage
+  - AnuData Architecture documented as the underlying format standard
+  - Consolidated V##/M## into Stage 5 (Replication) as sub-phases
+  - Data integrity gate enforced between every stage transition
+  - Updated to 14 skills (added anu-data, anu-publish, anu-visualize)
+  - Removed project-specific references (CS extraction is a project pattern, not a pipeline stage)
 
-State transitions are tracked with timestamps and (optional) agent identifiers.
+---
 
-## Why a Pipeline?
+## Template
 
-Without explicit pipeline orchestration, agent-driven data projects fail in two ways:
+- `templates/PIPELINE_STATE_TEMPLATE.json`
 
-1. **Skipped stages**: Agent jumps to extension before research is complete; methodology is invented rather than derived from sources.
-2. **Hidden dependencies**: A change in registry doesn't propagate to chopped CSVs because no one knew the dependency existed.
+---
 
-The pipeline makes the dependency graph explicit, gates progression on prerequisite completion, and produces a single state file that any agent (or human) can read to understand current status.
+## Documentation Contract
 
-## Quality Checklist
+| Aspect | Detail |
+|--------|--------|
+| **Creates** | `PIPELINE_STATE.json` |
+| **Expects** | All stage artifacts as defined by each skill's Documentation Contract |
+| **Must Update on Completion** | Update `PIPELINE_STATE.json` stage status. Regenerate Ledger (`/anu-ledger generate`) on every stage advance |
 
-- [ ] PIPELINE_STATE.json exists and is current
-- [ ] Stage 0 Adequacy was run before any other stage
-- [ ] No stages started before prerequisites complete
-- [ ] All stage transitions are timestamped
-- [ ] Blocking issues are documented when present
-- [ ] Stage 8 Review run before declaring project complete
+Before advancing to the next stage, validate that the current stage's Documentation Contract artifacts all exist. The Ledger's `series_inventory` provides this check automatically. Block advancement if mandatory artifacts are missing (agents may override with explicit justification).
+
+---
+
+*Part of the Anu Data Framework — Multi-Agent Workflow Orchestrator*

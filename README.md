@@ -1,10 +1,10 @@
-# Anu Suite — Agent-Driven Data Construction Framework
+# Anu Data Framework
 
-**A 12-skill framework for AI agents to construct empirical data projects that produce outputs reproducible without agents.**
+**A 14-skill protocol for AI agents to construct empirical data projects that produce outputs reproducible without agents.**
 
 ---
 
-## What the Anu Suite Solves
+## The Problem
 
 When AI agents construct empirical research data, three problems emerge:
 
@@ -12,226 +12,156 @@ When AI agents construct empirical research data, three problems emerge:
 2. **Provenance**: How do you track which data came from where, and what transformations were applied?
 3. **Verification**: How do humans audit agent-constructed data without trusting the agent's word?
 
-The Anu Suite solves these through a registry-driven architecture where every agent action is recorded, every data point traces back to a primary source, and the final pipeline runs as plain Python (or R, Stata, etc.) without any agent in the loop.
-
-Named after Anwar Shaikh's meticulous approach to empirical data construction — the gold standard for scholarly economic research.
+The Anu Data Framework solves these through a registry-driven architecture where every agent action is recorded, every data point traces back to a primary source, and the final pipeline runs as plain Python without any agent in the loop.
 
 ---
 
-## The 12 Skills
+## The 14 Skills
 
-| # | Skill | Purpose |
-|---|-------|---------|
-| 1 | **anu-research** | Mine knowledge base for quotes, references, methodology, footnotes per series |
-| 2 | **anu-ingestion** | KB construction, data import, absorption, decomposition, provenance documentation |
-| 3 | **anu-extension** | Faithful API-based data extension with fidelity framework |
-| 4 | **anu-chopped** | Machine-readable CSV format (Row 1 metadata, Row 2 IDs, Row 3+ data) |
-| 5 | **anu-extenbook** | Human-readable 4-sheet Excel (Data, Provenance, Research, Construction) |
-| 6 | **anu-replicator** | Self-contained packages with L##/P##/V##/M## phases |
-| 7 | **anu-shiny** | Plotly Dash interactive visualization with multi-source traces |
-| 8 | **anu-review** | 12-dimension quality audit framework |
-| 9 | **anu-pipeline** | 10-stage multi-agent orchestrator |
-| 10 | **anu-variant** | Methodology variant tracking |
-| 11 | **anu-ledger** | Data checkout/checkin coverage tracking |
-| 12 | **anu-adequacy** | Statistical adequacy testing framework |
+| # | Skill | Version | Purpose |
+|---|-------|---------|---------|
+| 0 | **[Rules](specs/00_rules.md)** | — | Mandatory invariants (no synthetic data, no proxies, unit safety) |
+| 1 | **[Research](specs/01_research.md)** | v2.0 | Mine knowledge base for methodology, quotes, and data sources per series |
+| 2 | **[Ingestion](specs/02_ingestion.md)** | v4.0 | KB construction, data import, absorption, series decomposition, provenance |
+| 3 | **[Extension](specs/03_extension.md)** | v3.3 | Faithful API-based data extension with 10-principle fidelity framework |
+| 4 | **[Chopped](specs/04_chopped.md)** | v2.0 | Machine-readable CSV format (metadata headers, structured column IDs) |
+| 5 | **[Extenbook](specs/05_extenbook.md)** | v3.2 | Human-readable 4-sheet Excel (Data, Provenance, Research, Construction) |
+| 6 | **[Replicator](specs/06_replicator.md)** | v3.0 | Self-contained packages with L##/P##/V##/M## phases + hash audit |
+| 7 | **[Visualize](specs/07_visualize.md)** | v5.0 | Interactive visualization (R Shiny + Plotly) with multi-source traces |
+| 8 | **[Review](specs/08_review.md)** | v4.0 | 13-dimension quality audit with weighted scoring and certification |
+| 9 | **[Pipeline](specs/09_pipeline.md)** | v3.0 | Multi-agent orchestrator across all 14 skills |
+| 10 | **[Variant](specs/10_variant.md)** | v1.4 | Methodology variant tracking and documentation |
+| 11 | **[Ledger](specs/11_ledger.md)** | v2.2 | Artifact coverage tracking (which series have which outputs) |
+| 12 | **[Adequacy](specs/12_adequacy.md)** | v1.2 | Post-research readiness gate (are data sources sufficient?) |
+| 13 | **[Data](specs/13_data.md)** | v2.0 | AnuData Architecture — the underlying format standard for all packages |
+| 14 | **[Publish](specs/14_publish.md)** | v1.0 | Publication pipeline (scrub, package, validate for GitHub release) |
 
-Each skill is a markdown specification (in `specs/`) that an AI agent loads and executes. Skills are version-controlled and composable.
+Each skill is a Markdown protocol specification that an AI agent loads and executes. Skills are version-controlled and composable.
 
 ---
 
 ## Architecture
 
-### Data Flow
-
 ```
-Knowledge Base / Source Documents
-        │
-        ▼
-  [Anu Research]  ─────────────────────►  S###_research.json
-        │                                  (per-series dossier)
-        ▼
-  [Anu Ingestion] ─────────────────────►  series_registry.json
-        │                                  (single source of truth)
-        ▼
-  [Anu Extension] ─────────────────────►  Extension methodology
-        │
-        ▼
-  [Anu Replicator]
-    Loading (L##)  ──────────────────────►  data/raw-data/
-    Processing (P##) ────────────────────►  data/final-data/
-    Validation (V##) ────────────────────►  VALIDATION_REPORT.json
-    Manual Adjust (M##) ─────────────────►  ADJUSTMENT_MANIFEST.json
-        │
-        ├─────────► [Anu Chopped]    ────►  Validated CSVs
-        ├─────────► [Anu Extenbook]  ────►  4-sheet Excel workbooks
-        └─────────► [Anu Shiny]      ────►  Interactive Dash app
-        │
-        ▼
-  [Anu Review]   ──────────────────────►  Quality audit (12 dimensions)
+Source Documents / APIs
+        |
+        v
+  [Research]  ──────────────────────>  S###_research.json
+        |                              (per-series methodology dossier)
+        v
+  [Adequacy]  ──────────────────────>  Data source readiness gate
+        |
+        v
+  [Ingestion] ──────────────────────>  series_registry.json
+        |                              (single source of truth)
+        v
+  [Extension] ──────────────────────>  Extension provenance records
+        |
+        v
+  [Replicator]
+    Loading (L##)  ─────────────────>  data/raw-data/
+    Processing (P##) ───────────────>  data/final-data/
+    Validation (V##) ───────────────>  VALIDATION_REPORT.json
+    Manual Adjust (M##) ────────────>  ADJUSTMENT_MANIFEST.json
+        |
+        +──────> [Chopped]     ─────>  Structured CSVs
+        +──────> [Extenbook]   ─────>  4-sheet Excel workbooks
+        +──────> [Visualize]   ─────>  Interactive dashboard
+        |
+        v
+  [Review]    ──────────────────────>  13-dimension quality audit
+        |
+        v
+  [Publish]   ──────────────────────>  GitHub release package
 ```
 
-### The Single Source of Truth
+---
+
+## Quick Start
+
+The Anu Data Framework is a set of protocol specifications, not a software library. To use it:
+
+### With Claude Code
+```bash
+# Have an agent read a spec and apply it
+claude "Read specs/02_ingestion.md and apply this protocol to construct
+        a series_registry.json for the Maddison world GDP database"
+```
+
+### As a Reference
+Read the specs in `specs/` to understand the data construction patterns, then implement them in your own project. The specs work with any AI agent platform or manual workflow.
+
+### See It in Action
+The [Measuring the Wealth of Nations](https://github.com/andenick/measuring-the-wealth-of-nations) replication package was built entirely using this framework — 59 series, 85 scripts, 15 validators, 0 failures.
+
+---
+
+## The Single Source of Truth
 
 Every output reads from `series_registry.json`:
 
 ```json
 {
-  "registry_version": "2.0",
   "series": {
-    "S001": {
-      "name": "US Industrial Production Index",
-      "chapter": 2,
-      "viz_column": "IndProd",
+    "T506": {
+      "name": "Rate of Exploitation (e = S*/V*)",
+      "chapter": 5,
+      "year_range": [1948, 2024],
+      "units": "ratio",
+      "content_type": "time_series",
       "subseries": {
-        "S001-A": {
-          "period": "1860-1932",
-          "source": "BEA LTEG 1966, Table A-15",
-          "units": "Index 1899=100"
-        },
-        "S001-B": {
-          "period": "1933-2025",
-          "source": "FRED INDPRO",
-          "units": "Index 2017=100"
-        }
+        "T506-A": { "source": "Shaikh & Tonak 1994", "period": [1948, 1989] },
+        "T506-EXT": { "source": "BLS CES + BEA NIPA", "period": [1990, 2024] }
       },
-      "extension": {
-        "method": "reindex_at_splice",
-        "splice_year": 1933
+      "construction": [
+        { "step": 1, "op": "load", "subseries": ["T506-A"] },
+        { "step": 2, "op": "derive", "formula": "e = S*/V*" },
+        { "step": 3, "op": "splice", "at_year": 1989 }
+      ],
+      "validation": {
+        "reference_values": { "1948": 1.70, "1989": 2.44 }
       }
     }
   }
 }
 ```
 
-All downstream artifacts derive from this:
-- Chopped CSVs auto-generate Row 1 metadata
-- Extenbooks pull provenance from registry
-- Shiny app reads viz_column aliases
-- Validation scripts check expected reference values
-
-### Hash-Based Audit Trail
-
-Every input and output file gets a SHA-256 hash recorded in `LOAD_LOG.json` and `PROCESS_LOG.json` with timing metadata:
-
-```json
-{
-  "series_id": "S001",
-  "status": "SUCCESS",
-  "input_hash": "a7f3...",
-  "output_hash": "b9e2...",
-  "duration_ms": 1247,
-  "timestamp": "2026-04-26T14:32:18Z"
-}
-```
-
-A future researcher can verify they have the same data by recomputing hashes. Any modification — accidental or intentional — is detectable.
+See `schemas/series_registry_schema.json` for the full schema.
 
 ---
 
-## Why This Matters for AI Safety
+## Mandatory Rules
 
-The Anu Suite demonstrates three patterns directly relevant to safe AI deployment:
+The framework enforces [8 mandatory rules](specs/00_rules.md):
 
-### 1. Agent Constructs, Human Verifies
-Agents construct the pipeline (writing L## loaders, P## processors, V## validators). The final pipeline runs without any agent in the loop. A researcher clones the package, sets API keys, runs `python replicate.py`, and gets identical output.
+1. **Single Source of Truth** — `series_registry.json` governs all outputs
+2. **No Synthetic Data** — every value traces to a real source
+3. **No Proxies** — use the exact series, not a substitute
+4. **No Lazy Splices** — extend formulas by extending components
+5. **Unit Documentation** — every series declares its units
+6. **Content Type Classification** — only time series get extensions
+7. **Source Material Reading** — reviews must check the original text
+8. **Pipeline Ordering** — skills execute in dependency order
 
-### 2. Protocol Over Code
-Skills are markdown specifications, not compiled libraries. Agent behavior is governed by readable text that humans can audit, version-control, and modify. This is a more transparent approach than black-box agent orchestration.
-
-### 3. Provenance Is First-Class
-Every data point traces back to a primary source through the registry. Every transformation is logged with timing and hashes. There is no way for the agent to silently introduce changes — the audit trail makes it impossible.
-
----
-
-## Quick Start
-
-### As a Specification (read the protocols)
-```bash
-# Browse the 12 skills
-ls specs/
-# Read the master overview
-cat docs/ARCHITECTURE.md
-# See the registry schema
-cat schemas/series_registry_schema.json
-```
-
-### As an AI Agent (load the skills)
-With Claude Code or similar agent harness:
-```bash
-# Skills can be loaded as instructions:
-claude "Using the anu-research skill in specs/01_research.md, mine the KB for series S001"
-```
-
-### As a Researcher (use the patterns)
-The repo includes:
-- Schema definitions for `series_registry.json`
-- Templates for L##/P##/V##/M## scripts
-- Example registry from a real project (sanitized subset)
-- Reference implementation: see [capitalism-data](https://github.com/andenick/capitalism-data) for the suite applied at scale
-
----
-
-## Reference Implementation
-
-The Anu Suite has been applied to a complete academic replication project: extending Anwar Shaikh's *Capitalism: Competition, Conflict, Crises* (2016) with 105 data series across 235 years of US economic history (1790-2025).
-
-Results:
-- 209 figures with full metadata
-- 105 series identified and numbered
-- 13 series extended to 2025 using BEA, FRED, BLS APIs
-- 182 Extenbook Excel workbooks with full provenance
-- Interactive R Shiny dashboard
-- 100% validation pass rate
-
-See [github.com/andenick/capitalism-data](https://github.com/andenick/capitalism-data).
+These rules exist because their absence caused specific, documented failures in real projects.
 
 ---
 
 ## Repository Structure
 
 ```
-anu-suite/
-├── README.md              # This file
-├── CLAUDE.md              # Reviewer quick-start
-├── LICENSE                # MIT
-├── specs/
-│   ├── 01_research.md     # Per-series research dossier protocol
-│   ├── 02_ingestion.md    # KB construction, decomposition
-│   ├── 03_extension.md    # Faithful API extension framework
-│   ├── 04_chopped.md      # Machine-readable CSV format
-│   ├── 05_extenbook.md    # Human-readable Excel format
-│   ├── 06_replicator.md   # Self-contained replication packages
-│   ├── 07_shiny.md        # Interactive visualization standard
-│   ├── 08_review.md       # 12-dimension quality audit
-│   ├── 09_pipeline.md     # Multi-agent orchestrator
-│   ├── 10_variant.md      # Methodology variant tracking
-│   ├── 11_ledger.md       # Coverage tracking
-│   └── 12_adequacy.md     # Statistical adequacy framework
-├── schemas/
-│   ├── series_registry_schema.json
-│   └── series_id_spec.md
-├── examples/
-│   ├── sample_series_registry.json
-│   ├── sample_chopped.csv
-│   └── sample_extenbook_structure.md
-└── docs/
-    ├── ARCHITECTURE.md
-    └── DATA_FLOW.md
+anu-data-framework/
+  specs/           14 protocol specifications (Markdown)
+  schemas/         JSON schemas for the series registry
+  examples/        Sample registry and data files
+  docs/            Architecture and data flow documentation
+  README.md        This file
+  CLAUDE.md        Quick orientation for AI code reviewers
+  LICENSE          MIT
 ```
 
 ---
 
-## Portfolio Context
+## Named After
 
-This is one of four repositories demonstrating an integrated system for AI-driven economic research:
-
-1. **[hdarp](https://github.com/andenick/hdarp)** — Input layer: get data into the pipeline (multi-engine OCR consensus)
-2. **[anu-suite](https://github.com/andenick/anu-suite)** — Protocol layer: structure agent tasks (this repo)
-3. **[nickydata](https://github.com/andenick/nickydata)** — Reproducibility layer: language-agnostic pipeline architecture
-4. **[capitalism-data](https://github.com/andenick/capitalism-data)** — Demonstration layer: 235 years of economic data extended to 2025
-
----
-
-## License
-
-MIT — All specifications and schemas may be freely used, modified, and distributed.
+Anwar Shaikh's meticulous approach to empirical data construction — the gold standard for scholarly economic research. The framework was developed while replicating Shaikh & Tonak's *Measuring the Wealth of Nations* (1994) and Shaikh's *Capitalism: Competition, Conflict, Crises* (2016).

@@ -1,123 +1,287 @@
-# Anu Chopped — Machine-Readable CSV Format
 
-## Purpose
+# Anu Chopped Standard v1.4
 
-A standardized machine-readable CSV format for empirical data series. Optimized for downstream consumption by visualization apps, replication scripts, and analytical pipelines.
+The machine-readable CSV format for the Anu Framework. Formalizes the 3-row structure (metadata, headers, data) as a universal standard for data construction projects.
+
+---
 
 ## Format Specification
 
-| Row | Content |
-|-----|---------|
-| 1 | Metadata (source, units, period, methodology summary) |
-| 2 | Column IDs (S001-A, S001-B, S001-EXT, S001-F, etc.) |
-| 3+ | Data rows (Year, value, value, ...) |
+### Row Structure
 
-### Row 1: Metadata
-Pipe-delimited fields for each column:
-```
-Year|S001-A: BEA LTEG 1966 [1860-1932] Index 1899=100|S001-B: FRED INDPRO [1933-2025] Index 2017=100|...
-```
+| Row | Content | Description |
+|-----|---------|-------------|
+| **Row 1** | Metadata | Source descriptions, units, and methodology notes per column |
+| **Row 2** | Column IDs | Series and subseries identifiers (e.g., `S001-A`, `S001-B`) |
+| **Row 3+** | Data | Numeric values with Year in the first column |
 
-### Row 2: Column IDs
-Clean column identifiers for programmatic use:
+### Column Layout (left to right)
+
 ```
-year,S001-A,S001-B,S001-EXT,S001-F
+Year | S###-A (raw subsource 1) | S###-B (transform/reindex) | ... | S### (final series) | S###-EXT (raw API extension) | S###-F (re-indexed extension) | S###-COMBINED (spliced)
 ```
 
-### Row 3+: Data
-Standard CSV data rows:
-```
-1860,2.1,,,
-1861,2.2,,,
-...
-1932,18.7,,,
-1933,,17.1,,18.5
-1934,,18.3,,
-...
-2025,,108.2,108.2,
-```
+### Column ID Notation (v2.0)
 
-## Why This Format?
+- Subseries use dash notation: `S001-A`, `S001-B`, `S001-C`
+- Extension (raw): `S001-EXT` — raw API data in native units from the splice year onward
+- Extension (re-indexed): `S001-F` — API data re-indexed to overlap with the previous subsource at the splice point. Formula: `S###-F[t] = prev_subsource[splice_year] * (API[t] / API[splice_year])`
+- Combined: `S001-COMBINED`
+- Base series (author's final composite): `S001`
+- Concurrent (component) numerator: `CS001-N` — level-data numerator input of a ratio/rate series
+- Concurrent (component) denominator: `CS001-D` — level-data denominator input of a ratio/rate series
+- Additional component suffixes: `CS001-N2`, `CS001-D2`, `CS001-N3`, `CS001-D3` for multi-ratio series
 
-1. **Self-documenting**: Row 1 metadata travels with the data; no separate schema file needed
-2. **Programmatic-friendly**: Row 2 column IDs are valid Python/R identifiers
-3. **Multi-source visible**: Each subsource gets its own column; readers see methodology boundaries
-4. **Extension-aware**: Extension columns (`-EXT`, `-F`) are explicit, not hidden
+### Concurrent Series (CS) Columns
 
-## Generation
+When a series is a ratio or rate (e.g., profit rate = NOS / Capital), the chopped CSV may include **Concurrent Series (CS)** columns that expose the level-data components (numerator and denominator). These columns:
 
-The Chopped writer auto-generates Row 1 metadata from `series_registry.json`:
+- Use the `CS{NNN}-{suffix}` naming convention (e.g., `CS026-N`, `CS026-D`)
+- Are defined in the `concurrent_series` block of `series_registry.json`
+- Have corresponding `SUBSOURCE_METADATA` entries with `is_component: true` and `component_type: "numerator"|"denominator"`
+- Live in the **same chopped CSV** as the rate series (not separate files)
+- Have units (e.g., `$billions`) that differ from the rate series (e.g., `Rate (decimal)`)
 
-```python
-from anu_chopped import write_chopped
+| Validation Rule | ID | Description |
+|-----------------|-----|-------------|
+| CS column naming | V12 | CS columns must match `CS\d{3}-(N\d?|D\d?)` pattern |
+| CS metadata | V13 | Each CS column must have a SUBSOURCE_METADATA entry with `is_component: true` |
 
-write_chopped(
-    series_id="S001",
-    data_dict={
-        "S001-A": pd.Series(...),
-        "S001-B": pd.Series(...),
-        "S001-EXT": pd.Series(...),
-        "S001-F": pd.Series(...),
-    },
-    registry=registry,
-    output_path="data/final-data/chopped/S001.csv"
-)
-```
+### Row 1 Metadata Generation
+
+Row 1 is **auto-generated from `series_registry.json`** by the Chopped writer. For each column:
+
+- Non-derived subseries: `"{source}, {units}. {methodology_summary_excerpt}"`
+- Derived/reindexed subseries: `"Derived from {derived_from}, {transform.type} to {units}. Formula: {transform.formula}"`
+- Extension: `"{api} {api_series_id}, {units}. Source: {api_url}. Pulled via {script}. {aggregation_note}"`
+- Combined: `"Spliced {base_series} ({base_period}) + {extension_source} (post-{splice_year}), re-indexed to {target_base} at splice year."`
+
+---
+
+## Validation Rules
+
+| Rule | ID | Description |
+|------|----|-------------|
+| Row 1 exists | V1 | First row contains metadata strings |
+| Row 2 exists | V2 | Second row contains column IDs |
+| Year column | V3 | First column is "Year" (Row 2) or empty (Row 1) |
+| ID format | V4 | All column IDs match `S\d{3}(-[A-Z]|-EXT|-F|-COMBINED)?` |
+| Numeric data | V5 | All data cells (Row 3+) are numeric or empty |
+| No duplicate IDs | V6 | No duplicate column IDs in Row 2 |
+| Metadata count | V7 | Row 1 has same number of columns as Row 2 |
+| Filename | V8 | Filename follows convention (warning only, not blocking) |
+| Final series | V9 | At least one column has base series ID (S###) without suffix (warning for wide_table format) |
+| Subsource metadata | V10 | Every column ID in this Chopped CSV has a matching entry in the project's `SUBSOURCE_METADATA.json` |
+| Extension columns | V11 | Every extended series must have both `-EXT` (raw) and `-F` (re-indexed) columns in the chopped CSV |
+
+---
 
 ## Subsource Metadata Generation
 
-Alongside each Chopped CSV, the writer generates `SUBSOURCE_METADATA.json`:
+Every project that produces Chopped CSVs **MUST** also generate a `SUBSOURCE_METADATA.json` file that provides per-column metadata for downstream visualization. This file is **programmatically generated from `series_registry.json`** — never hand-written.
+
+### Purpose
+
+The visualization layer needs richer metadata than Row 1 descriptions alone. Without structured, registry-derived metadata, view mode filtering breaks (wrong subsources shown), trace labels degrade (unlabeled or mislabeled), and users cannot understand how series were constructed.
+
+### Generator Script Pattern
+
+A script (e.g., `generate_subsource_metadata.py`) reads `series_registry.json` and produces `SUBSOURCE_METADATA.json`:
+
+```python
+# Reads: config/series_registry.json
+# Writes: data/final-data/shiny/SUBSOURCE_METADATA.json
+# Also copies to: visualization app data directory
+```
+
+### Required Output Fields Per Column
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `subsource_id` | string | Compact ID without dash (e.g., `S001A`) |
+| `column_name` | string | Chopped CSV column ID with dash (e.g., `S001-A`) |
+| `source_name` | string | Human-readable source name |
+| `source_text` | string | Full source citation text |
+| `period_start` | int/null | First year of data coverage |
+| `period_end` | int/null | Last year of data coverage |
+| `units` | string/null | Unit description (e.g., "Index 1958=100") |
+| `role` | string | One of: `original`, `reindex`, `reindex_to_match`, `splice`, `calculate`, `ratio`, `rescale`, `derived` |
+| `is_derived` | bool | Whether this column is derived from another subseries |
+| `derived_from` | string/null | Parent subseries ID if derived |
+| `transform_type` | string/null | Transform type (reindex, splice, etc.) |
+| `transform_detail` | string | Key-value pairs describing transform parameters |
+| `is_construction_member` | bool | Whether this subsource participates in the author's construction steps |
+| `is_extension` | bool | Whether this subsource is extension data (post-splice-year API data) |
+| `parent_series` | string | Parent series ID (e.g., `S001`) |
+
+### Required Output Fields Per Series (Construction Metadata)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `series_id` | string | Series ID |
+| `name` | string | Human-readable series name |
+| `chapter` | int | Chapter number |
+| `splice_year` | int/null | Year where extension data is spliced |
+| `extension_api` | string/null | API used for extension (e.g., `FRED`) |
+| `extension_series` | string/null | API series ID (e.g., `INDPRO`) |
+| `extension_method` | string/null | Splice method used |
+| `construction_text` | string | Human-readable narrative of how the series was constructed |
+
+### Output JSON Structure
 
 ```json
 {
-  "S001": {
-    "subseries": {
-      "S001-A": {
-        "viz_label": "Industrial Production (Historical)",
-        "role": "primary_historical",
-        "period": "1860-1932",
-        "units": "Index 1899=100",
-        "is_extension": false
-      },
-      "S001-EXT": {
-        "viz_label": "Industrial Production (Extension)",
-        "role": "extension",
-        "period": "2011-2025",
-        "is_extension": true
-      }
-    }
+  "generated_by": "generate_subsource_metadata.py",
+  "source": "series_registry.json",
+  "version": "1.0.0",
+  "subsources": {
+    "S001A": { "subsource_id": "S001A", "column_name": "S001-A", "..." : "..." },
+    "S001B": { "..." : "..." }
+  },
+  "series_construction": {
+    "S001": { "series_id": "S001", "construction_text": "...", "..." : "..." }
   }
 }
 ```
 
-This metadata feeds the Shiny app's series catalog.
+### Deriving `is_construction_member`
 
-## Validation
+A subseries has `is_construction_member = true` if it appears in any `construction` step for its parent series (as `input`, `output`, `match_to`, or in `inputs`/`subseries` arrays). This is determined by scanning the registry's `construction` array.
 
-A valid Chopped CSV must:
-- [ ] Row 1 has metadata for every data column
-- [ ] Row 2 has column IDs matching the registry
-- [ ] Year column is monotonically increasing
-- [ ] No NaN in the year column
-- [ ] All numeric columns parse as floats
+### Deriving `is_extension`
 
-Run validation with:
-```python
-from anu_chopped import validate_chopped
-result = validate_chopped("data/final-data/chopped/S001.csv")
+A subseries has `is_extension = true` if it corresponds to the post-splice-year segment of the final series. Two extension columns exist per extended series:
+
+- **`S###-EXT`** (role: `extension_raw`) — Raw API data in native units from the splice year onward
+- **`S###-F`** (role: `extension_reindexed`) — API data re-indexed to match the previous subsource at the splice point, using the formula: `S###-F[t] = prev_subsource[splice_year] * (API[t] / API[splice_year])`
+
+Both columns allow visual verification that the extension faithfully continues the original series. The `-F` column should overlap visually with adjacent subsources at the splice point.
+
+Extension subsource metadata is generated by a project-specific script that reads `series_registry.json` extension blocks (e.g., `generate_shiny_subsources.py` in the CD2 project, producing `SHINY_SUBSOURCES.json`). The general standard name for this output is `SUBSOURCE_METADATA.json`.
+
+### Deriving `construction_text`
+
+The generator builds a human-readable narrative by walking the `construction` steps and the `extension` config:
+
+- `load` steps: "{id}: {source_name} ({period})"
+- `reindex` steps: "{input} reindexed to {base_year}=100 -> {output}"
+- `reindex_to_match` steps: "{input} reindexed to match {match_to} at {at_year} -> {output}"
+- `splice` steps: "{input1} + {input2} spliced at {at_year} -> {output}"
+- Extension: "Extended via {api} {series_id} ({method} at {splice_year})"
+
+### Validation Against Chopped CSVs
+
+The generator MUST validate that every column in every Chopped CSV has a corresponding entry in the output JSON. Missing entries indicate registry gaps that will cause unlabeled traces in the visualization.
+
+---
+
+## Catalog Format
+
+`ANU_CHOPPED_CATALOG.json` — machine-readable catalog of all Chopped files:
+
+```json
+{
+  "version": "2.0",
+  "generated": "2026-03-07",
+  "files": [
+    {
+      "filename": "Appendix2_IndustrialProduction.csv",
+      "chapter": 2,
+      "series_id": "S001",
+      "subseries_ids": ["S001-A", "S001-B", "S001-C", "S001-D", "S001", "S001-EXT", "S001-COMBINED"],
+      "year_range": [1860, 2025],
+      "figures": ["Fig2.1"],
+      "format": "time_series",
+      "research_entry_count": 4,
+      "extension_source": "FRED:INDPRO"
+    }
+  ]
+}
 ```
 
-## Concurrent Series (CS) Columns
+---
 
-For ratio/rate series, the Chopped writer also includes Concurrent Series components:
+## Commands
 
+| Command | Description |
+|---------|-------------|
+| `/anu-chopped validate [file]` | Validate a single Chopped CSV |
+| `/anu-chopped validate-all [directory]` | Validate all Chopped CSVs in a directory |
+| `/anu-chopped generate [series_id]` | Generate Chopped CSV from registry + data |
+| `/anu-chopped catalog [directory]` | Generate/update ANU_CHOPPED_CATALOG.json |
+| `/anu-chopped migrate-ids [file]` | Migrate column IDs from v1.0 to v2.0 notation |
+
+---
+
+## Validation Script
+
+`scripts/validate_chopped.py` — runs all validation rules, prints pass/fail per rule, returns exit code 0 if all pass.
+
+```bash
+python validate_chopped.py path/to/file.csv
+python validate_chopped.py --dir path/to/chopped/ch02/
+python validate_chopped.py --catalog path/to/ANU_CHOPPED_CATALOG.json
 ```
-year,S026-A,S026-B,CS026-N,CS026-D
-```
 
-Where:
-- `S026-A`, `S026-B`: The ratio subsources
-- `CS026-N`: Numerator component (e.g., corporate profits)
-- `CS026-D`: Denominator component (e.g., capital stock)
+---
 
-CS columns are filtered out in standard views and shown only when "Show Components" is enabled in the Shiny app.
+## Writer Library
+
+`lib/formats/chopped_writer.py` in the Anu Replicator generates Chopped CSVs:
+
+1. Reads `series_registry.json` for metadata and column IDs
+2. Generates Row 1 from registry fields (auto-generated, not hand-written)
+3. Generates Row 2 from subseries keys
+4. Writes data rows from the processed series data
+
+---
+
+## Integration with Anu Framework
+
+| Skill | Relationship |
+|-------|-------------|
+| **Anu Ingestion** | Chopped CSVs are validated during import; IDs use v2.0 notation |
+| **Anu Replicator** | P## scripts write Chopped CSVs to `data/final-data/chopped/` |
+| **Anu Extenbook** | Extenbook Data sheet mirrors Chopped structure with Excel formatting |
+| **Anu Visualize** | R Shiny app loads Chopped CSVs for visualization; `SUBSOURCE_METADATA.json` (project-specific naming and generator) provides per-column metadata |
+| **Anu Review** | D7 Chopped Validation dimension scores format compliance |
+
+---
+
+## Templates
+
+- `templates/ANU_CHOPPED_CATALOG_TEMPLATE.json`
+
+---
+
+## Anu Framework Context
+
+- **Pipeline Stage**: 5 (OUTPUT — validation)
+- **Upstream**: Stage 4 Replication (produces Chopped CSVs)
+- **Downstream**: Stage 5b Viz Export, Stage 6 Review
+- **Adequacy Relevance**: L2 (Series Definition) — validates that chopped column IDs match registry subseries
+- **Key Handoff**: Validated Chopped CSVs feed into Shiny data pipeline and Extenbook generation
+
+## Version History
+
+- **v1.0** (March 2026) - Initial release
+- **v1.1** (March 2026) - Version bump for Anu Framework v6.0
+- **v1.2** (March 2026) - Added Subsource Metadata Generation standard (V10), SUBSOURCE_METADATA.json specification, construction_text derivation
+- **v1.3** (March 2026) - Added S###-F re-indexed extension column convention, V11 extension column validation rule, dual extension column requirement (-EXT + -F), subsource metadata generation standard, re-indexing formula documentation
+- **v1.4** (March 2026) - Generalized: replaced CD2-specific subsource metadata naming with generic pattern; clarified SUBSOURCE_METADATA.json as the standard name with project-specific variants
+- **v1.5** (March 2026) - Added Concurrent Series (CS) column convention for ratio/rate series component data (CS{NNN}-N, CS{NNN}-D), V12/V13 validation rules
+- **v2.0** (April 2026) - Version bump for Anu Framework v6.0 compatibility (format unchanged)
+
+---
+
+## Documentation Contract
+
+| Aspect | Detail |
+|--------|--------|
+| **Creates** | `ANU_CHOPPED_CATALOG.json` (via `/anu-chopped catalog`), `SUBSOURCE_METADATA.json` (via generator script) |
+| **Expects** | `series_registry.json` (for writer and metadata generator), Chopped CSVs to validate |
+| **Must Update on Completion** | Regenerate catalog (`/anu-chopped catalog`) after new Chopped CSVs are written. Regenerate `SUBSOURCE_METADATA.json` after registry or chopped changes. Regenerate Ledger (`/anu-ledger generate`) |
+
+---
+
+*Part of the Anu Data Framework — Machine-Readable Data Format*
