@@ -40,6 +40,17 @@ Each skill is a Markdown protocol specification that an AI agent loads and execu
 
 ---
 
+## Quick Start
+
+```bash
+git clone https://github.com/andenick/anu-data-framework.git
+cd anu-data-framework
+```
+
+No installation required — all skills are Markdown protocol specs. Feed them to any AI agent (Claude Code, Cursor, Gemini CLI).
+
+---
+
 ## Architecture
 
 ```
